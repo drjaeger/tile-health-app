@@ -44,8 +44,9 @@ export interface GameState {
   startedAt: number;
 }
 
-// Pulled from Dead Cells' palette: saturated but painterly rather than flat/neon.
-export const PLAYER_COLORS = [
+// The winner's confetti: a fixed mix that reads as a celebration on any seat
+// color in either theme (player colors themselves are RETRO_/DUNGEON_COLORS).
+export const CONFETTI_COLORS = [
   "#c23b3b", // blood red
   "#3a86c8", // cave blue
   "#6ab04c", // toxic green
@@ -71,8 +72,7 @@ export const DUNGEON_COLORS = [
   "#c4762f", // torch ember
 ];
 
-// Saturated arcade-cabinet neon instead of PLAYER_COLORS' painterly tones,
-// to match the "Retro" theme's CRT-terminal look.
+// Saturated arcade-cabinet neon, to match the "Retro" theme's arcade look.
 export const RETRO_COLORS = [
   "#ff3864", // neon pink/red
   "#2de2e6", // neon cyan

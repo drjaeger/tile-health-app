@@ -2,8 +2,8 @@ import { DUNGEON_COLORS, RETRO_COLORS } from "./types";
 import type { ThemeId } from "./theme";
 
 const PALETTES: Record<ThemeId, string[]> = {
-  dungeon: RETRO_COLORS,
-  castlevania: DUNGEON_COLORS,
+  retro: RETRO_COLORS,
+  dungeon: DUNGEON_COLORS,
 };
 
 /** The identity-color palette for a theme, index-aligned across themes (index = "seat"). */

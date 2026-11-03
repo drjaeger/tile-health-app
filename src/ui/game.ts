@@ -3,7 +3,7 @@ import { getLayout, getClockwiseOrder } from "../layout";
 import { attachGestureZone, HOLD_DELAY_MS, HOLD_INTERVAL_MS } from "../gesture";
 import type { GestureOptions } from "../gesture";
 import { fitRotated } from "../rotatedFit";
-import { COMMANDER_DAMAGE_LETHAL, PLAYER_COLORS } from "../types";
+import { COMMANDER_DAMAGE_LETHAL, CONFETTI_COLORS } from "../types";
 import type { GameState, Player, PlayerId } from "../types";
 import { openSettings } from "./settings";
 import { openConfirm } from "./confirm";
@@ -78,9 +78,9 @@ const WINNER_PULSE_DURATION_MS = 1800;
 
 // A swipe-commit exit continues straight out of a 1:1 finger-follow drag, so
 // it needs an easing that keeps looking like the same motion rather than
-// visibly changing speed the instant the finger lifts: "ease-in" (the
-// previous curve) starts slow, which reads as the content stalling for a
-// beat before launching away. An ease-out curve instead starts at (or above)
+// visibly changing speed the instant the finger lifts: an "ease-in" curve
+// starts slow, which reads as the content stalling for a beat before
+// launching away. An ease-out curve instead starts at (or above)
 // the speed the drag left it at and decelerates into place, which is what
 // makes the hand-off feel seamless. Exit and enter share the same curve and
 // duration so the two halves of a panel transition read as one motion.
@@ -641,7 +641,7 @@ export function renderGameScreen(root: HTMLElement) {
         playAgainBtn.addEventListener("click", () => {
           openConfirm({
             title: "Start a new round?",
-            message: "Everyone's life totals and counters will reset to starting values.",
+            message: "Everyone's life totals and commander damage will reset to starting values.",
             confirmLabel: "Play Again",
             onConfirm: () => {
               gameStore.resetGame();
@@ -829,7 +829,7 @@ export function renderGameScreen(root: HTMLElement) {
       const durationMs = (1.8 + seeded(i + 100) * 1.2) * 1000;
       const staggerMs = seeded(i + 200) * 2000;
       piece.style.left = `${(seeded(i) * 100).toFixed(2)}%`;
-      piece.style.backgroundColor = PLAYER_COLORS[i % PLAYER_COLORS.length];
+      piece.style.backgroundColor = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
       piece.style.animationDuration = `${durationMs}ms`;
       // Winner is re-derived (and this re-spawned) on every state re-render
       // while they stand, so the delay is phased to wall-clock time instead
@@ -1121,8 +1121,8 @@ export function renderGameScreen(root: HTMLElement) {
 
   /**
    * One pill per opponent who has actually dealt this player commander
-   * damage — unlike an earlier version, a dealer with none isn't rendered
-   * at all (not even hidden), so the row is only ever as wide as it needs
+   * damage — a dealer with none isn't rendered at all (not even hidden),
+   * so the row is only ever as wide as it needs
    * to be and stays centered as entries join: the first pill is centered
    * alone, a second recenters the pair around it, and so on. Each pill's
    * *width* still comes from the game's total opponent count, not how many

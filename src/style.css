@@ -14,10 +14,8 @@
      --font-body since not every theme wants to change both, and separate from the clock/"BACK" label too,
      which stay on Press Start 2P for every theme (see .center-timer and
      .center-return-label below) rather than following this. */
-  /* Concert One (bundled via @fontsource, see main.ts) replaced Visitor TT1, which was hard to read
-     upside down from across the table. Baloo 2 was tried briefly too.
-     "A Goblin Appears", Retro Computer, VCR OSD Mono and Pixelta were all
-     tried before Visitor and didn't stick. */
+  /* Concert One (bundled via @fontsource, see main.ts): chosen for being
+     easy to read upside down from across the table. */
   --font-display: "Concert One", "Press Start 2P", sans-serif;
   --font-display-scale: 1.4;
   /* Width of each life-total digit's slot (see .life-digit) — the display
@@ -27,8 +25,7 @@
   --life-digit-width: 0.55em;
   /* Black for contrast against any player card color. */
   --life-number-color: #0a0a0a;
-  /* Arcade-at-night palette (replaced the old green-phosphor CRT
-     terminal look): deep indigo cabinet panels, soft white text with a
+  /* Arcade-at-night palette: deep indigo cabinet panels, soft white text with a
      lavender dim, and coin-slot gold as the accent, so menus sit alongside
      the neon player colors instead of reading as a computer terminal. */
   --bg: #120f24;
@@ -66,7 +63,7 @@
  * life totals) — a themed re-skin should change its lettering, not just
  * its colors.
  */
-:root[data-theme="castlevania"] {
+:root[data-theme="dungeon"] {
   --bg: #0e1210;
   --bg-deep: #070908;
   --stone: #2b3328;
@@ -91,7 +88,7 @@
      down. Everything else keeps Alagard (body + the selector list below). */
 }
 
-:root[data-theme="castlevania"] body {
+:root[data-theme="dungeon"] body {
   background-image: radial-gradient(ellipse at 50% -10%, #3a2a12 0%, var(--bg) 65%);
 }
 
@@ -292,7 +289,7 @@ h1, h2, h3 {
   );
 }
 
-/* Carries the color/pattern background AND whichever content face is
+/* Carries the seat's color AND whichever content face is
    showing, as one unit, so swipes move the background along with the
    content instead of leaving it behind. */
 .card-view {
@@ -811,17 +808,17 @@ h1, h2, h3 {
  * numbers, and the arrangement screen's seat previews. The clock
  * (.center-timer) is deliberately excluded — see its own rule above.
  */
-:root[data-theme="castlevania"] h1,
-:root[data-theme="castlevania"] h2,
-:root[data-theme="castlevania"] h3,
-:root[data-theme="castlevania"] .panel-title,
-:root[data-theme="castlevania"] .commander-announce-text,
-:root[data-theme="castlevania"] .center-return-label,
-:root[data-theme="castlevania"] .center-delta,
-:root[data-theme="castlevania"] .floating-delta,
-:root[data-theme="castlevania"] .tap-glyph,
-:root[data-theme="castlevania"] .arrangement-option-label,
-:root[data-theme="castlevania"] .arrangement-seat {
+:root[data-theme="dungeon"] h1,
+:root[data-theme="dungeon"] h2,
+:root[data-theme="dungeon"] h3,
+:root[data-theme="dungeon"] .panel-title,
+:root[data-theme="dungeon"] .commander-announce-text,
+:root[data-theme="dungeon"] .center-return-label,
+:root[data-theme="dungeon"] .center-delta,
+:root[data-theme="dungeon"] .floating-delta,
+:root[data-theme="dungeon"] .tap-glyph,
+:root[data-theme="dungeon"] .arrangement-option-label,
+:root[data-theme="dungeon"] .arrangement-seat {
   font-family: "Alagard", "Press Start 2P", monospace;
 }
 
@@ -835,14 +832,14 @@ h1, h2, h3 {
 /* Dungeon's Alagard renders far smaller than Press Start 2P at the same
    size, so its +N/-N feedback was hard to spot — bigger, with a full dark
    outline so the gain/loss colors hold up against its muted cards. */
-:root[data-theme="castlevania"] .floating-delta {
+:root[data-theme="dungeon"] .floating-delta {
   font-size: 2.1rem;
   text-shadow:
     -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
     0 3px 0 #000;
 }
 
-:root[data-theme="castlevania"] .center-delta {
+:root[data-theme="dungeon"] .center-delta {
   font-size: 1.7rem;
   text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 2px 2px 0 #000;
 }

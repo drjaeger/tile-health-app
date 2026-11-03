@@ -83,8 +83,8 @@ export function openSettings() {
     styleControls.className = "segmented-row";
     const currentTheme = loadTheme();
     const styleOptions: { id: ThemeId; label: string }[] = [
-      { id: "dungeon", label: "Retro" },
-      { id: "castlevania", label: "Dungeon" },
+      { id: "retro", label: "Retro" },
+      { id: "dungeon", label: "Dungeon" },
     ];
     for (const opt of styleOptions) {
       const btn = document.createElement("button");
@@ -137,7 +137,7 @@ export function openSettings() {
       close();
       openConfirm({
         title: "Reset this game?",
-        message: `All life totals and counters will be reset back to ${startingLife}.`,
+        message: `All life totals reset to ${startingLife} and commander damage to 0.`,
         confirmLabel: "Reset",
         onConfirm: () => {
           const settings = { ...originalSettings, startingLife };

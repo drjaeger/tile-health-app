@@ -9,6 +9,7 @@ with nearest-neighbor, so it keeps the app's pixel-art look. Emits:
   - mipmap-*/ic_launcher.png / ic_launcher_round.png (legacy, pre-Android-8:
     background + artwork flattened; the round one masked to a circle)
   - drawable*/splash.png (the artwork centered on the background color)
+  - public/favicon.png (browser tab icon for the dev server / web build)
   - values/ic_launcher_background.xml (solid background color)
 
 Run from the repo root:  python3 scripts/gen_icon.py
@@ -149,6 +150,11 @@ def main():
         splash = Image.new("RGBA", (w, h), BG + (255,))
         splash.paste(art, ((w - art.width) // 2, (h - art.height) // 2), art)
         splash.convert("RGB").save(path)
+
+    # Favicon: the launcher's visible area at 2px per unit (72x72).
+    full = render(px, 2, BG)
+    m = (GRID - VISIBLE) // 2 * 2
+    full.crop((m, m, full.width - m, full.height - m)).save("public/favicon.png")
 
     with open(os.path.join(RES, "values", "ic_launcher_background.xml"), "w") as f:
         f.write(
