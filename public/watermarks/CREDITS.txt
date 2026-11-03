@@ -1,0 +1,13 @@
+Milestone watermarks (shown faintly on a player's card once earned).
+
+Icons from game-icons.net (https://game-icons.net), licensed under CC BY 3.0
+(https://creativecommons.org/licenses/by/3.0/):
+- skull.svg: "Death skull" by Sbed
+- cards.svg: "Poker hand" by Lorc (http://lorcblog.blogspot.com)
+- blackcat.svg: "Cat" by Lorc (http://lorcblog.blogspot.com)
+- star.svg: "Trophy cup" by Delapouite (https://delapouite.com)
+Modified: background square removed, recoloured.
+
+finger.svg: "Hand middle finger" from Font Awesome Free 6 by Fonticons, Inc.
+(https://fontawesome.com), licensed under CC BY 4.0
+(https://creativecommons.org/licenses/by/4.0/). Modified (recoloured).

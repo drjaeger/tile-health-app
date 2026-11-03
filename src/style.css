@@ -1,0 +1,1492 @@
+/* Self-hosted (not on Google Fonts) — see public/fonts/. */
+@font-face {
+  font-family: "Alagard";
+  src: url("/fonts/alagard.ttf") format("truetype");
+  font-display: swap;
+}
+
+:root {
+  color-scheme: dark;
+  /* Swapped per-theme below; every plain-body-text rule in this file reads
+     this instead of hardcoding "VT323" directly, so a theme can replace it. */
+  --font-body: "VT323", "Courier New", monospace;
+  /* Same idea, but just for the life-total numerals — kept separate from
+     --font-body since not every theme wants to change both, and separate from the clock/"BACK" label too,
+     which stay on Press Start 2P for every theme (see .center-timer and
+     .center-return-label below) rather than following this. */
+  /* Concert One (bundled via @fontsource, see main.ts) replaced Visitor TT1, which was hard to read
+     upside down from across the table. Baloo 2 was tried briefly too.
+     "A Goblin Appears", Retro Computer, VCR OSD Mono and Pixelta were all
+     tried before Visitor and didn't stick. */
+  --font-display: "Concert One", "Press Start 2P", sans-serif;
+  --font-display-scale: 1.4;
+  /* Width of each life-total digit's slot (see .life-digit) — the display
+     font's widest digit. Concert One's digits are ~0.5em except "1" at
+     ~0.38em, which made 31 -> 32 visibly shift the 3. Shared by every
+     theme, along with the font and scale above. */
+  --life-digit-width: 0.55em;
+  /* Black for contrast against any player card color. */
+  --life-number-color: #0a0a0a;
+  /* Arcade-at-night palette (replaced the old green-phosphor CRT
+     terminal look): deep indigo cabinet panels, soft white text with a
+     lavender dim, and coin-slot gold as the accent, so menus sit alongside
+     the neon player colors instead of reading as a computer terminal. */
+  --bg: #120f24;
+  --bg-deep: #0a0816;
+  --stone: #1f1a3a;
+  --stone-2: #2e2752;
+  --stone-dark: #151129;
+  --ink: #f2eeff;
+  --ink-dim: #9d95c9;
+  --border-dark: #05040c;
+  --accent: #ffc23d;
+  --accent-dark: #b07a12;
+  --danger: #ff4d6d;
+  --danger-dark: #8a1f3a;
+  --safe: #2de8c0;
+  --safe-dark: #157a66;
+  /* Life-change feedback (flash / floating "+N" / center counter) — kept
+     separate from --safe/--danger, which also color buttons and the dead
+     state. A vivid green rather than --safe's teal, so a gain never reads
+     as "blue" next to the neon cyan seat. */
+  --gain: #2ee85a;
+  --loss: #ff4d6d;
+  --pixel: 4px;
+  --cmd-pill-h: clamp(14px, 4.4vw, 20px);
+  font-family: var(--font-body);
+  font-size: 20px;
+}
+
+/*
+ * A damp, mossy stone dungeon — cold stone grays, lichen green, and a
+ * torch-flame orange glow, with its own muted/gothic player-color palette
+ * (see DUNGEON_COLORS in types.ts) instead of the bright default one, which
+ * clashed with it. Alagard (a gothic-medieval pixel face) replaces the body
+ * font and the titles/labels listed further down (but not the clock or the
+ * life totals) — a themed re-skin should change its lettering, not just
+ * its colors.
+ */
+:root[data-theme="castlevania"] {
+  --bg: #0e1210;
+  --bg-deep: #070908;
+  --stone: #2b3328;
+  --stone-2: #3d4a37;
+  --stone-dark: #181f16;
+  --ink: #d8cfa8;
+  --ink-dim: #8a8f74;
+  --border-dark: #000000;
+  --accent: #d98a2b;
+  --accent-dark: #8a5415;
+  --danger: #7a2020;
+  --danger-dark: #401010;
+  --safe: #4a7a3a;
+  --safe-dark: #2a4a22;
+  /* The theme's own dark moss/blood tones vanished against its muted
+     cards — these are the same hues pushed bright (fresh moss, ember red). */
+  --gain: #9be564;
+  --loss: #ff5a3c;
+  --font-body: "Alagard", "VT323", monospace;
+  /* No --font-display override: life totals use the shared Concert One
+     setup from :root, since Alagard's numerals were hard to read upside
+     down. Everything else keeps Alagard (body + the selector list below). */
+}
+
+:root[data-theme="castlevania"] body {
+  background-image: radial-gradient(ellipse at 50% -10%, #3a2a12 0%, var(--bg) 65%);
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
+  overscroll-behavior: none;
+  user-select: none;
+  image-rendering: pixelated;
+}
+
+body {
+  position: relative;
+  background-image: radial-gradient(ellipse at 50% -10%, #2a1f52 0%, var(--bg) 60%);
+}
+
+/* Faint scanline/dither texture over the whole app. Plain alpha, no blend
+   mode: black multiplied at some strength gives exactly the same pixels as
+   black laid over at that strength, minus the cost of blending the whole
+   viewport every frame. (0.063 = the old 0.18 line alpha x 0.35 opacity.) */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 999;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.063) 0px,
+    rgba(0, 0, 0, 0.063) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+#app {
+  height: 100vh;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+input {
+  font-family: inherit;
+  font-size: 1.1rem;
+  color: var(--ink);
+  background: var(--stone-dark);
+  border: 2px solid var(--border-dark);
+  box-shadow: inset 0 0 0 2px var(--stone-2);
+  padding: 8px 10px;
+}
+
+h1, h2, h3 {
+  font-family: "Press Start 2P", "VT323", monospace;
+}
+
+/* ---------- Settings / confirm rows (reused by settings dialog) ---------- */
+
+.setup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--stone-dark);
+  border: 2px solid var(--border-dark);
+  padding: 12px 16px;
+  margin-bottom: 10px;
+}
+
+/* For a row whose control wraps onto multiple lines (e.g. Badges) — aligns
+   the label to the top line instead of centering it across all of them. */
+.setup-row-top {
+  align-items: flex-start;
+}
+
+.setup-row-top > label {
+  padding-top: 6px;
+}
+
+.setup-row label {
+  font-size: 1.2rem;
+  color: var(--ink-dim);
+  letter-spacing: 0.5px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stepper-btn {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--border-dark);
+  background: var(--stone-2);
+  box-shadow: 0 3px 0 0 var(--border-dark);
+  font-size: 1.3rem;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.stepper-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+
+.stepper-btn:disabled {
+  opacity: 0.3;
+}
+
+.stepper-value {
+  min-width: 32px;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.toggle-btn {
+  border: 2px solid var(--border-dark);
+  background: var(--stone-2);
+  padding: 6px 16px;
+  font-size: 1.1rem;
+}
+
+.toggle-btn.active {
+  background: var(--accent);
+  color: #241400;
+  border-color: var(--accent-dark);
+}
+
+.segmented-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---------- Game screen ---------- */
+
+.game-screen {
+  height: 100%;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.player-grid {
+  flex: 1;
+  display: grid;
+  gap: var(--pixel);
+  padding: var(--pixel);
+  min-height: 0;
+  background: var(--border-dark);
+}
+
+.player-card {
+  position: relative;
+  overflow: hidden;
+  /* Neutral "void" showing briefly behind the sliding .card-view during a
+     swipe transition — the player's actual color lives on .card-color-fill
+     now, inside .card-view, so it slides away together with the content. */
+  background: var(--stone-dark);
+  border: 3px solid var(--border-dark);
+  /* A slight pixel-stepped (not smooth-arc) corner, in keeping with the
+     rest of the chunky pixel-art look — a 3-step staircase cut at each
+     corner instead of a true border-radius curve. */
+  clip-path: polygon(
+    12px 0, calc(100% - 12px) 0,
+    calc(100% - 12px) 4px, calc(100% - 8px) 4px,
+    calc(100% - 8px) 8px, calc(100% - 4px) 8px,
+    calc(100% - 4px) 12px, 100% 12px,
+    100% calc(100% - 12px),
+    calc(100% - 4px) calc(100% - 12px), calc(100% - 4px) calc(100% - 8px),
+    calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) calc(100% - 4px),
+    calc(100% - 12px) calc(100% - 4px), calc(100% - 12px) 100%,
+    12px 100%,
+    12px calc(100% - 4px), 8px calc(100% - 4px),
+    8px calc(100% - 8px), 4px calc(100% - 8px),
+    4px calc(100% - 12px), 0 calc(100% - 12px),
+    0 12px,
+    4px 12px, 4px 8px,
+    8px 8px, 8px 4px,
+    12px 4px
+  );
+}
+
+/* Carries the color/pattern background AND whichever content face is
+   showing, as one unit, so swipes move the background along with the
+   content instead of leaving it behind. */
+.card-view {
+  position: absolute;
+  inset: 0;
+}
+
+.card-color-fill {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: var(--player-color);
+}
+
+/*
+ * A seat rotated 90/270deg (the "court" family's end seats) swaps visual
+ * width/height, so its content can't just be rotated in place like the
+ * 180deg case — it would overflow the (tall-narrow or wide-short) grid
+ * cell. `.rotated-fit` is instead sized to the CELL'S TRANSPOSED
+ * dimensions (container units: its width is the cell's height and vice
+ * versa), centered, and rotated — which maps back to exactly the cell's own
+ * size after rotation, the standard fix for fitting rotated content into a
+ * non-square box. Used by the game's cards and the arrangement-screen
+ * preview seats (see src/rotatedFit.ts).
+ */
+.rotated-fit-cell {
+  container-type: size;
+  overflow: hidden;
+}
+
+.rotated-fit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100cqh;
+  height: 100cqw;
+  transform: translate(-50%, -50%) rotate(var(--fit-rotation));
+  transform-origin: center center;
+  /* Only affects plain (non-absolutely-positioned) content, like the
+     arrangement preview's seat number — the game card's .card-view fills
+     this box via its own `inset: 0` regardless. */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.life-face {
+  position: absolute;
+  inset: 0;
+  /* Lets .card-watermark size itself off this face's own width/height. */
+  container-type: size;
+  /* The dead / commander-announce faces are swiped directly (the normal
+     face's tap zones already set this) — without it, a touchscreen browser
+     can claim the drag as a pan and cancel the swipe. */
+  touch-action: none;
+}
+
+/* An earned milestone's silhouette (see placeWatermarks in game.ts for the
+   corner choice). Masked so it takes a faint shade of whatever the card's
+   color is, and kept behind the tap zones/number. Capped by both the
+   card's height and width so it stays clear of the life total and the
+   +/- glyphs even on narrow 5-6 player seats. */
+.card-watermark {
+  position: absolute;
+  top: 5%;
+  height: min(34cqh, 24cqw);
+  aspect-ratio: 1;
+  background: rgba(0, 0, 0, 0.17);
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  pointer-events: none;
+}
+
+/* The "Nice" (69) milestone is a word, not a silhouette: same faint ink,
+   set in the life-total font and sized to sit in the same corner. */
+.card-watermark-text {
+  height: auto;
+  aspect-ratio: auto;
+  font-family: var(--font-display);
+  font-size: min(19cqh, 12cqw);
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.17);
+  background: none;
+}
+
+.card-watermark.left {
+  left: 3%;
+}
+
+.card-watermark.right {
+  right: 3%;
+}
+
+/* A persistent overlay, created once outside the game screen's own root (see
+   renderGameScreen), that every tap-feedback effect (flash/ring/floating
+   delta) spawns into. The screen re-renders its *entire* DOM on every single
+   life change — unavoidable given its architecture — which would otherwise
+   destroy any of these mid-animation the instant another tap landed; living
+   outside that root is what lets one effect finish while another joins in. */
+.effects-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  /* Below .center-settings-btn (z-index: 10) and .table-badge (z-index: 15)
+     on purpose — a life-flash/ring is sized to a specific card's rect, but
+     as a *sibling* of the whole app root it would otherwise still paint over
+     the center button sitting at the grid's shared corner, tinting it along
+     with whichever card it's flashing for. */
+  z-index: 5;
+}
+
+/* Lives in #effects-layer (position: fixed, see .effects-layer below), sized
+   and placed in screen coordinates by JS to match the card's rect at spawn
+   time — not a plain `inset: 0` child of the card itself — specifically so
+   it survives the game screen's full re-render on every life change instead
+   of being torn down mid-fade by it. */
+.life-flash {
+  position: fixed;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 1;
+  animation: life-flash-anim 320ms ease-out;
+}
+
+.life-flash.flash-gain {
+  background: var(--gain);
+}
+
+.life-flash.flash-loss {
+  background: var(--loss);
+}
+
+@keyframes life-flash-anim {
+  0% { opacity: 0.55; }
+  100% { opacity: 0; }
+}
+
+/* A stronger, longer-held version for hold-to-repeat ±10 changes — the
+   same gain/loss color, just turned up, so a held edit visibly reads as
+   "bigger" than a single tap. */
+.life-flash.flash-intense {
+  animation-name: life-flash-anim-intense;
+  animation-duration: 420ms;
+}
+
+@keyframes life-flash-anim-intense {
+  0% { opacity: 0.8; }
+  100% { opacity: 0; }
+}
+
+/* Concentric "pulse" rings propagating out from wherever the player's
+   finger actually was on every *confirmed* life change (a tap or a
+   hold-tick — never a raw touch that turns into a swipe, since those never
+   reach spawnLifeEffect at all). A real pixel-art circle sprite (blocky,
+   un-antialiased, drawn once at 20x20 — see public/fx/ring.png) kept crisp
+   at any scale via `image-rendering: pixelated`, rather than a smooth
+   border-radius circle or a plain square. Lives in #effects-layer
+   (position: fixed) with `left`/`top` set per-effect by JS to the tap's own
+   screen position — not a child of the card — so a later re-render can't
+   tear it down mid-animation. */
+.life-ring {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 28px;
+  height: 28px;
+  /* Fixed-px (not %) centering on purpose — a percentage `translate` here
+     would resolve against this *unscaled* 28px box the whole time, so
+     combining it with the scale-up keyframe below would drift the ring
+     away from its anchor point as it grows. A static margin offset keeps
+     the box centered on (left, top) regardless of scale, so `transform`
+     below is free to just scale it around that already-correct center. */
+  margin: -14px 0 0 -14px;
+  background-image: url("/fx/ring.png");
+  background-size: contain;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.9;
+  animation: life-ring-pulse 650ms ease-out forwards;
+}
+
+/* A bigger, longer-throw version for hold-to-repeat ±10 changes. */
+.life-ring.ring-intense {
+  animation-name: life-ring-pulse-intense;
+  animation-duration: 850ms;
+}
+
+@keyframes life-ring-pulse {
+  0% { transform: scale(0.5); opacity: 0.9; }
+  100% { transform: scale(8); opacity: 0; }
+}
+
+@keyframes life-ring-pulse-intense {
+  0% { transform: scale(0.6); opacity: 0.95; }
+  100% { transform: scale(11); opacity: 0; }
+}
+
+/* Seat shakes (shakeCard in game.ts): light for burn, normal for a ±10
+   life hold or one commander-damage hit, heavy for a ±10 commander-damage
+   hold. Uses the standalone `translate` property (not `transform`)
+   specifically so it layers on top of a 180deg-rotated card's existing
+   `transform: rotate(180deg)` instead of clobbering it. */
+@keyframes card-shake {
+  0%, 100% { translate: 0 0; }
+  20% { translate: calc(-1.5 * var(--shake-amp)) 0; }
+  40% { translate: calc(1.5 * var(--shake-amp)) 0; }
+  60% { translate: calc(-1 * var(--shake-amp)) 0; }
+  80% { translate: var(--shake-amp) 0; }
+}
+
+@keyframes card-shake-heavy {
+  0%, 100% { translate: 0 0; }
+  10% { translate: -14px 3px; }
+  20% { translate: 13px -3px; }
+  30% { translate: -12px -2px; }
+  40% { translate: 11px 3px; }
+  50% { translate: -9px 2px; }
+  60% { translate: 8px -2px; }
+  70% { translate: -6px 1px; }
+  80% { translate: 4px -1px; }
+  90% { translate: -2px 0; }
+}
+
+.player-card.shake-light {
+  --shake-amp: 2px;
+  animation: card-shake 260ms ease-in-out;
+}
+
+.player-card.shake-normal {
+  --shake-amp: 4px;
+  animation: card-shake 320ms ease-in-out;
+}
+
+.player-card.shake-heavy {
+  animation: card-shake-heavy 440ms ease-in-out;
+}
+
+/* Lives in #effects-layer (position: fixed) — see .life-flash above for why. */
+.floating-delta {
+  position: fixed;
+  font-family: "Press Start 2P", monospace;
+  font-size: 1.3rem;
+  text-shadow: 2px 2px 0 #000;
+  pointer-events: none;
+  z-index: 3;
+  animation: float-up-fade 750ms ease-out forwards;
+}
+
+.floating-gain {
+  color: var(--gain);
+}
+
+.floating-loss {
+  color: var(--loss);
+}
+
+@keyframes float-up-fade {
+  0% { transform: translateY(0) scale(0.9); opacity: 0; }
+  20% { opacity: 1; transform: translateY(-6px) scale(1.1); }
+  100% { transform: translateY(-48px) scale(1); opacity: 0; }
+}
+
+.tap-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 50%;
+  border: none;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+}
+
+.tap-zone-minus {
+  left: 0;
+  justify-content: flex-start;
+  /* Percentage padding on an absolutely-positioned element resolves against
+     its containing block (the full card width), so this is 10% of the
+     card's own width, not just this half-zone's. */
+  padding-left: 10%;
+}
+
+.tap-zone-plus {
+  right: 0;
+  justify-content: flex-end;
+  padding-right: 10%;
+}
+
+.tap-glyph {
+  font-family: "Press Start 2P", monospace;
+  font-size: 2rem;
+  color: rgba(10, 10, 10, 0.4);
+  pointer-events: none;
+  display: inline-block;
+  transition: transform 100ms ease-out;
+}
+
+.tap-zone.pressed .tap-glyph {
+  transform: translateY(2px) scale(0.88);
+}
+
+.card-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Flank the winner's life-number as the other two flex children of
+   .card-center — same floater look as the table badges (bob + outline). */
+.winner-chalice {
+  width: clamp(34px, 11vw, 56px);
+  height: auto;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.45));
+  animation: badge-bob 2.2s ease-in-out infinite;
+}
+
+.life-number {
+  font-family: var(--font-display);
+  /* Base (4-player) size scaled by --life-scale (per player count, set on
+     .player-grid in renderGameScreen — a pure vw-based clamp doesn't know
+     a 6-player card is much smaller than a 4-player one) and separately by
+     --font-display-scale (per theme/font, since not every display font
+     reads the same size at the same font-size value). */
+  font-size: calc(clamp(3.6rem, 19vw, 7.6rem) * var(--life-scale, 1) * var(--font-display-scale, 1));
+  color: var(--life-number-color, #0a0a0a);
+}
+
+/* One fixed-width slot per digit (filled by fillDigits in game.ts) rather
+   than relying on tabular-nums, which Concert One and Alagard don't
+   support. inline-flex centers a glyph wider than its slot
+   evenly instead of letting it spill to the right. */
+.life-digit {
+  display: inline-flex;
+  justify-content: center;
+  width: var(--life-digit-width, auto);
+}
+
+.life-number.life-dead {
+  color: var(--danger);
+}
+
+.dead-face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background: #2b2b2b;
+}
+
+.dead-skull {
+  width: clamp(64px, 28vw, 104px);
+  height: auto;
+  image-rendering: pixelated;
+}
+
+.revive-btn {
+  width: 84px;
+  height: 56px;
+  border: 3px solid var(--border-dark);
+  background: var(--danger);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  box-shadow: 0 4px 0 0 var(--danger-dark);
+  transition: transform 60ms ease-out, box-shadow 60ms ease-out;
+}
+
+.revive-btn:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+/*
+ * Width resolves as a percentage of the *card's* full width. Margin from
+ * every side of the health area is 1x the pill height: left/right come for
+ * free from centering a row narrower than the card by 1x that on each side
+ * (2x total); bottom is set to match. Only
+ * pills with actual damage are rendered into it (see
+ * renderCommanderDamageBars), so `justify-content: center` naturally
+ * re-centers the group as entries join or clear, instead of the row
+ * reserving a fixed slot per opponent.
+ */
+.cmd-damage-bars {
+  position: absolute;
+  left: 50%;
+  bottom: var(--cmd-pill-h);
+  transform: translateX(-50%);
+  width: calc(100% - var(--cmd-pill-h) * 2);
+  display: flex;
+  justify-content: center;
+  gap: calc(var(--cmd-pill-h) / 2);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/*
+ * Width is fixed per-game — an equal share of the row as if every opponent
+ * (`--cmd-pill-count`, set by renderCommanderDamageBars) had a pill in it —
+ * rather than `flex: 1` dividing among only the pills currently shown, so
+ * an existing pill never resizes just because another opponent starts or
+ * stops dealing damage; only the group's centered position shifts.
+ */
+.cmd-damage-bar {
+  flex: 0 0 auto;
+  width: calc((100% - (var(--cmd-pill-count) - 1) * (var(--cmd-pill-h) / 2)) / var(--cmd-pill-count));
+  height: var(--cmd-pill-h);
+  border: 3px solid #000;
+  background: #000;
+  overflow: hidden;
+}
+
+.cmd-damage-bar-fill {
+  height: 100%;
+  transition: width 400ms ease-out;
+}
+
+/* ---------- Center settings / timer button ---------- */
+
+/* Same stepped-corner pixel-panel language as every other button/panel in
+   the app (see .dialog-btn), instead of a plain smooth circle. */
+/* Flat solid color + hard box-shadow offsets for depth — matching the same
+   chunky pixel-button language as .dialog-btn elsewhere; a smooth
+   gradient would read as "not pixel art" next to those. A rectangle (not a
+   circle) fits the "00:00" timer text more naturally. */
+.center-settings-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* --center-rotation defaults to 0deg so every layout but split-h (which
+     sets it via an inline custom property) is unaffected. */
+  --center-rotation: 0deg;
+  transform: translate(-50%, -50%) rotate(var(--center-rotation));
+  z-index: 10;
+  width: 150px;
+  height: 60px;
+  border: 3px solid var(--border-dark);
+  background: var(--stone-2);
+  box-shadow:
+    inset 0 0 0 3px var(--stone-dark),
+    0 4px 0 0 var(--border-dark),
+    0 0 0 4px var(--border-dark);
+  /* Same 3-step pixel staircase corner as .player-card, for a consistent
+     level of "chunkiness" across every panel in the app. */
+  clip-path: polygon(
+    12px 0, calc(100% - 12px) 0,
+    calc(100% - 12px) 4px, calc(100% - 8px) 4px,
+    calc(100% - 8px) 8px, calc(100% - 4px) 8px,
+    calc(100% - 4px) 12px, 100% 12px,
+    100% calc(100% - 12px),
+    calc(100% - 4px) calc(100% - 12px), calc(100% - 4px) calc(100% - 8px),
+    calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) calc(100% - 4px),
+    calc(100% - 12px) calc(100% - 4px), calc(100% - 12px) 100%,
+    12px 100%,
+    12px calc(100% - 4px), 8px calc(100% - 4px),
+    8px calc(100% - 8px), 4px calc(100% - 8px),
+    4px calc(100% - 12px), 0 calc(100% - 12px),
+    0 12px,
+    4px 12px, 4px 8px,
+    8px 8px, 8px 4px,
+    12px 4px
+  );
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  transition: transform 60ms ease-out, box-shadow 60ms ease-out;
+}
+
+.center-settings-btn:active {
+  transform: translate(-50%, -50%) rotate(var(--center-rotation)) translateY(4px);
+  box-shadow:
+    inset 0 0 0 3px var(--stone-dark),
+    0 0 0 4px var(--border-dark);
+}
+
+.center-timer {
+  /* Always Press Start 2P, deliberately not themed via --font-display —
+     tried following the life total's font here for both the VCR and
+     Alagard themes and it read badly at this size in both cases. */
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-shadow: 1px 1px 0 #000;
+}
+
+.center-return-label {
+  display: inline-block;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  color: var(--accent);
+  text-shadow: 1px 1px 0 #000;
+}
+
+/*
+ * Every other spot that hardcodes Press Start 2P directly (rather than
+ * reading --font-body/--font-display) — dialog/panel titles, the
+ * commander-damage announcement, tap +/- glyphs, the floating/center delta
+ * numbers, and the arrangement screen's seat previews. The clock
+ * (.center-timer) is deliberately excluded — see its own rule above.
+ */
+:root[data-theme="castlevania"] h1,
+:root[data-theme="castlevania"] h2,
+:root[data-theme="castlevania"] h3,
+:root[data-theme="castlevania"] .panel-title,
+:root[data-theme="castlevania"] .commander-announce-text,
+:root[data-theme="castlevania"] .center-return-label,
+:root[data-theme="castlevania"] .center-delta,
+:root[data-theme="castlevania"] .floating-delta,
+:root[data-theme="castlevania"] .tap-glyph,
+:root[data-theme="castlevania"] .arrangement-option-label,
+:root[data-theme="castlevania"] .arrangement-seat {
+  font-family: "Alagard", "Press Start 2P", monospace;
+}
+
+.center-delta {
+  display: inline-block;
+  font-family: "Press Start 2P", monospace;
+  font-size: 1.1rem;
+  text-shadow: 1px 1px 0 #000;
+}
+
+/* Dungeon's Alagard renders far smaller than Press Start 2P at the same
+   size, so its +N/-N feedback was hard to spot — bigger, with a full dark
+   outline so the gain/loss colors hold up against its muted cards. */
+:root[data-theme="castlevania"] .floating-delta {
+  font-size: 2.1rem;
+  text-shadow:
+    -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 2px 2px 0 #000,
+    0 3px 0 #000;
+}
+
+:root[data-theme="castlevania"] .center-delta {
+  font-size: 1.7rem;
+  text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 2px 2px 0 #000;
+}
+
+.center-delta.gain {
+  color: var(--gain);
+}
+
+.center-delta.loss {
+  color: var(--loss);
+}
+
+/* ---------- Table badges (initiative/monarch) — purely cosmetic, draggable ---------- */
+
+/* No circular container — just the icon itself (pre-baked with a solid
+   black outline, see public/icons/CREDITS.txt) floating directly over the
+   table. Outer element carries position only (left/top + centering); the
+   icon carries its own rotation and bob so the two never compete for the
+   same element. */
+.table-badge {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  z-index: 15;
+  width: 68px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+}
+
+.table-badge-icon {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 0 rgba(0, 0, 0, 0.45));
+  animation: badge-bob 2.2s ease-in-out infinite;
+}
+
+.table-badge-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+/* The torch's flame / the crown's gold glow on top of the light pool
+   below them — this is what keeps the glow readable on bright cards. */
+.table-badge-img-initiative {
+  filter: drop-shadow(0 0 6px rgba(255, 170, 60, 0.95)) drop-shadow(0 0 14px rgba(255, 120, 30, 0.6));
+}
+
+.table-badge-img-monarch {
+  filter: drop-shadow(0 0 4px rgba(255, 236, 140, 0.55));
+}
+
+.table-badge-img-burn {
+  filter: drop-shadow(0 0 4px rgba(255, 170, 70, 0.85)) drop-shadow(0 0 10px rgba(255, 100, 30, 0.45));
+}
+
+/* Held down and dealing damage: flares up and flickers. */
+.table-badge.burning .table-badge-img-burn {
+  animation: burn-flare 0.3s steps(2, jump-none) infinite alternate;
+}
+
+@keyframes burn-flare {
+  from {
+    scale: 1.08;
+    filter: drop-shadow(0 0 8px rgba(255, 170, 50, 0.95)) drop-shadow(0 0 18px rgba(255, 90, 20, 0.7));
+  }
+  to {
+    scale: 1.16;
+    filter: drop-shadow(0 0 12px rgba(255, 200, 80, 1)) drop-shadow(0 0 26px rgba(255, 70, 10, 0.8));
+  }
+}
+
+/* Light thrown onto the table around initiative/monarch. Centered on the
+   badge (not on its bobbing/rotated body) and well under the icon. */
+.badge-light {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  pointer-events: none;
+  translate: -50% -50%;
+}
+
+.badge-light-initiative {
+  width: 220px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(255, 196, 96, 0.6) 0%, rgba(255, 140, 40, 0.28) 32%, rgba(255, 110, 20, 0) 68%);
+  animation: torch-flicker 1.7s ease-in-out infinite;
+  animation-delay: var(--badge-t, 0ms);
+}
+
+/* Just a faint, slowly breathing warm glow — no rays (tried; too much). */
+.badge-light-monarch {
+  width: 150px;
+  height: 150px;
+  background: radial-gradient(circle, rgba(255, 230, 130, 0.35) 0%, rgba(255, 200, 70, 0.12) 35%, rgba(255, 190, 60, 0) 65%);
+  animation: crown-pulse 3s ease-in-out infinite;
+  animation-delay: var(--badge-t, 0ms);
+}
+
+/* Smaller and fainter than the torch's pool — just enough to read as lit. */
+.badge-light-burn {
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(255, 150, 60, 0.4) 0%, rgba(255, 90, 20, 0.16) 35%, rgba(255, 80, 20, 0) 65%);
+  animation: torch-flicker 1.3s ease-in-out infinite;
+  animation-delay: var(--badge-t, 0ms);
+}
+
+/* Pixel-art glint: a flat-white, stair-stepped diagonal stripe pair
+   (public/fx/shine.png, generated by scripts/gen_badges.py) that *jumps*
+   across the crown in 12px steps rather than gliding, then rests. */
+.badge-glint {
+  position: absolute;
+  inset: 0;
+  background: url(/fx/shine.png) no-repeat;
+  background-size: 32px 68px;
+  image-rendering: pixelated;
+  mask-size: contain;
+  mask-repeat: no-repeat;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  animation: crown-glint 4.5s steps(11, end) infinite;
+  animation-delay: var(--badge-t, 0ms);
+}
+
+/* Four-point star glints on the crown's points, popping in turn. */
+.badge-sparkle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #fffbe6;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+  filter: drop-shadow(0 0 3px #fff3b0);
+  scale: 0;
+  /* Stepped like the glint, so the twinkle pops in blocky frames. */
+  animation: crown-sparkle 2.4s steps(3, jump-none) infinite;
+}
+
+.badge-sparkle.sparkle-0 {
+  left: 2%;
+  top: 6%;
+  animation-delay: var(--badge-t, 0ms);
+}
+
+.badge-sparkle.sparkle-1 {
+  left: 41%;
+  top: 6%;
+  animation-delay: calc(var(--badge-t, 0ms) - 800ms);
+}
+
+.badge-sparkle.sparkle-2 {
+  left: 81%;
+  top: 6%;
+  animation-delay: calc(var(--badge-t, 0ms) - 1600ms);
+}
+
+@keyframes torch-flicker {
+  0%, 100% { opacity: 0.85; scale: 1; }
+  18% { opacity: 1; scale: 1.06; }
+  34% { opacity: 0.75; scale: 0.97; }
+  52% { opacity: 0.95; scale: 1.03; }
+  71% { opacity: 0.8; scale: 0.99; }
+  86% { opacity: 1; scale: 1.05; }
+}
+
+@keyframes crown-pulse {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* 132px over 11 steps = 12px jumps (a multiple of the 2px art pixel). */
+@keyframes crown-glint {
+  0% { background-position: -32px 0; }
+  35%, 100% { background-position: 100px 0; }
+}
+
+/* The dealer chip gets the crown's same sweep (same speed and steps), but
+   10x rarer: once per 45s instead of every 4.5s. 3.5% of 45s is the
+   crown's 35% of 4.5s. Shifted 22s so it never coincides with a crown
+   sweep. */
+.badge-glint-dealer {
+  animation: chip-glint 45s steps(11, end) infinite;
+  animation-delay: calc(var(--badge-t, 0ms) - 22s);
+}
+
+@keyframes chip-glint {
+  0% { background-position: -32px 0; }
+  3.5%, 100% { background-position: 100px 0; }
+}
+
+@keyframes crown-sparkle {
+  0%, 60%, 100% { scale: 0; rotate: 0deg; }
+  75% { scale: 1; rotate: 45deg; }
+  90% { scale: 0.3; rotate: 90deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badge-light, .badge-glint, .badge-sparkle {
+    animation: none;
+  }
+}
+
+.table-badge.dragging .table-badge-icon {
+  animation-play-state: paused;
+}
+
+.table-badge-icon.no-bob {
+  animation: none;
+}
+
+@keyframes badge-bob {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -8px; }
+}
+
+/* ---------- Overlay / modal ---------- */
+
+.overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--bg-deep) 75%, transparent);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 100;
+}
+
+@media (min-width: 640px) {
+  .overlay-backdrop {
+    align-items: center;
+  }
+}
+
+.overlay-content {
+  background: var(--stone);
+  border: var(--pixel) solid var(--border-dark);
+  box-shadow: inset 0 0 0 var(--pixel) var(--stone-2), 0 -4px 0 0 var(--border-dark);
+  padding: 20px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 88vh;
+  overflow-y: auto;
+  user-select: text;
+}
+
+.overlay-content h2 {
+  margin-top: 0;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.settings-divider {
+  height: 2px;
+  background: var(--border-dark);
+  box-shadow: 0 2px 0 0 var(--stone-2);
+  margin: 16px 0;
+}
+
+.dialog-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+/* .dialog-btn-danger/-primary are normally standalone full-width buttons
+   (hence their own width/margin-top), but confirm dialogs also reuse them
+   side-by-side with Cancel here — reset those so both buttons size evenly. */
+.dialog-actions .dialog-btn {
+  width: auto;
+  margin-top: 0;
+}
+
+.dialog-btn {
+  flex: 1;
+  padding: 12px;
+  border: 3px solid var(--border-dark);
+  background: var(--stone-2);
+  box-shadow: 0 4px 0 0 var(--border-dark);
+  font-size: 1.1rem;
+  color: var(--ink);
+  transition: transform 60ms ease-out, box-shadow 60ms ease-out;
+}
+
+.dialog-btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dialog-btn-icon-img {
+  width: 20px;
+  height: 20px;
+  image-rendering: pixelated;
+}
+
+.dialog-btn:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+
+.dialog-btn:disabled {
+  opacity: 0.4;
+}
+
+.dialog-btn-primary {
+  width: 100%;
+  margin-top: 4px;
+  background: var(--accent);
+  color: #241400;
+  border-color: var(--accent-dark);
+  box-shadow: 0 4px 0 0 var(--accent-dark);
+}
+
+.dialog-btn-danger {
+  width: 100%;
+  margin-top: 10px;
+  background: var(--danger);
+  border-color: var(--danger-dark);
+  box-shadow: 0 4px 0 0 var(--danger-dark);
+  color: white;
+}
+
+/* ---------- Per-card swipe panels (customization / commander damage) ---------- */
+
+.panel-wrapper {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--bg-deep) 97%, transparent);
+  padding: 10px;
+  overflow-y: auto;
+}
+
+.panel-title {
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.75rem;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.panel-subtitle {
+  font-size: 1.1rem;
+  color: var(--ink-dim);
+  margin: 10px 0 4px;
+}
+
+/* 12 colors per theme — a fixed 6-wide grid keeps them as two tidy rows
+   instead of a ragged wrap that depends on the panel's width. */
+.panel-swatch-row {
+  display: grid;
+  grid-template-columns: repeat(6, 36px);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.panel-bg-swatch {
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--border-dark);
+  background-color: var(--stone-2);
+  background-repeat: repeat;
+  background-size: 18px 18px;
+  image-rendering: pixelated;
+}
+
+.panel-bg-swatch.selected {
+  outline: 2px solid var(--ink);
+}
+
+.panel-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 1rem;
+  color: var(--ink-dim);
+  margin-bottom: 8px;
+}
+
+.panel-hint {
+  margin-top: auto;
+  text-align: center;
+  color: var(--ink-dim);
+  font-size: 0.85rem;
+  opacity: 0.7;
+  padding-top: 8px;
+}
+
+/* Standalone full-width button under Reset Game (.dialog-btn is flex:1
+   for side-by-side rows, which a block-level button ignores anyway). */
+.settings-credits-btn {
+  width: 100%;
+  margin-top: 10px;
+}
+
+/* Body font, not the h3 title font — Press Start 2P headings shouted as
+   loud as the dialog title in Retro. */
+.credits-heading {
+  margin: 14px 0 4px;
+  font-family: var(--font-body);
+  font-size: 1.2rem;
+  color: var(--accent);
+}
+
+.credits-line {
+  margin: 0 0 4px;
+  font-size: 0.9rem;
+  line-height: 1.3;
+  color: var(--ink-dim);
+}
+
+.credits-close {
+  margin-top: 18px;
+}
+
+/* ---------- Commander-damage table view ---------- */
+
+.commander-announce {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+}
+
+.commander-announce-text {
+  font-family: "Press Start 2P", monospace;
+  font-size: clamp(0.85rem, 6vw, 1.5rem);
+  line-height: 1.6;
+  text-align: center;
+  color: var(--accent);
+  text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6);
+}
+
+.commander-slot-face {
+  position: absolute;
+  overflow: hidden;
+}
+
+.commander-slot-face.full {
+  inset: 0;
+}
+
+/*
+ * Always used for a partner commander — never a top/bottom stack: every
+ * seat's local (pre-rotation) card space is a wide/short landscape
+ * rectangle (a 90/270 seat's is transposed to match before its own rotation
+ * applies — see .rotated-fit-cell/fitRotated), and splitting that top/bottom
+ * produces two long, squashed strips. Left/right gives each half a far more
+ * reasonable shape for a life number plus its tap zones.
+ */
+.commander-slot-face.left-half,
+.commander-slot-face.right-half {
+  top: 0;
+  bottom: 0;
+  width: 50%;
+}
+
+.commander-slot-face.left-half {
+  left: 0;
+  border-right: 3px solid var(--border-dark);
+}
+
+.commander-slot-face.right-half {
+  right: 0;
+  border-left: 3px solid var(--border-dark);
+}
+
+.life-number.compact {
+  font-size: calc(clamp(1.8rem, 12vw, 3.6rem) * var(--life-scale, 1));
+}
+
+/* ---------- Arrangement screen ---------- */
+
+.arrangement-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* .dialog-btn defaults to flex:1 for its usual home in a flex *row*
+   (.dialog-actions, side-by-side with Cancel) — reset that here so the
+   standalone Start button doesn't also grow to fill this screen's flex
+   *column*, now that .arrangement-options is the one meant to grow. */
+.arrangement-dialog > .dialog-btn {
+  flex: none;
+}
+
+/* Grows to fill whatever space the count stepper/label above and the
+   Cancel/Start buttons below don't need, instead of sizing to its smallest
+   content and leaving the rest of the screen empty — the previews (and the
+   gap before the buttons) scale up with the available room. */
+.arrangement-options {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.arrangement-option {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px;
+  background: var(--stone-2);
+  border: 3px solid var(--border-dark);
+  cursor: pointer;
+}
+
+.arrangement-option.active {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.arrangement-option-label {
+  flex: none;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.65rem;
+  color: var(--ink);
+  text-align: center;
+}
+
+.arrangement-preview {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  justify-content: center;
+  gap: 4px;
+  padding: 8px;
+  background: var(--stone-dark);
+  border: 2px solid var(--border-dark);
+}
+
+.arrangement-seat {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  font-family: "Press Start 2P", monospace;
+  font-size: 0.8rem;
+  color: #1a0f08;
+  border: 2px solid var(--border-dark);
+}
+
+/* ---------- Winner: last player standing ---------- */
+
+/* A white wash over the seat's color fill that breathes in and out — just
+   an opacity animation (compositor-only), not a brightness filter over the
+   whole card, which repainted the card and its confetti every frame. Sits
+   under the life total and confetti, so those stay crisp. */
+.player-card.winner .card-color-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  animation: winner-pulse 1.8s ease-in-out infinite;
+  animation-delay: var(--winner-t, 0ms);
+}
+
+@keyframes winner-pulse {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 0.3; }
+}
+
+.confetti-layer {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -8%;
+  width: 8px;
+  height: 8px;
+  opacity: 0.9;
+  animation-name: confetti-fall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes confetti-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0.9; }
+  100% { transform: translateY(640px) rotate(360deg); opacity: 0.6; }
+}
+
+.winner-bar {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--border-dark);
+  padding: 4px 6px;
+}
+
+.winner-label {
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.winner-reset-btn {
+  pointer-events: auto;
+  border: 2px solid var(--safe-dark);
+  background: var(--safe);
+  color: #fff;
+  font-family: var(--font-body);
+  font-size: 0.9rem;
+  padding: 3px 10px;
+  box-shadow: 0 2px 0 0 var(--safe-dark);
+}
+
+.winner-reset-btn:active {
+  transform: translateY(2px);
+  box-shadow: none;
+}

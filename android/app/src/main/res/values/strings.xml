@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Tile</string>
+    <string name="title_activity_main">Tile</string>
+    <string name="package_name">com.edhlifetracker.app</string>
+    <string name="custom_url_scheme">com.edhlifetracker.app</string>
+</resources>
